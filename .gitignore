@@ -1,0 +1,29 @@
+# Virtual environment
+venv/
+
+# Cloned repos (temporary)
+zennit_repo/
+
+# Large data files
+data/pascal_voc/
+data/imagenet_samples/
+*.tar
+*.zip
+*.tar.gz
+
+# Large result files
+*.h5
+*.npy
+*.pt
+
+# Python cache
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
