@@ -6,14 +6,14 @@ zennit_repo/
 
 # Large data files
 data/pascal_voc/
-data/imagenet_samples/
+
 *.tar
 *.zip
 *.tar.gz
 
 # Large result files
 *.h5
-*.npy
+
 *.pt
 
 # Python cache
