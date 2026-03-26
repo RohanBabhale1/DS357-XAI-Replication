@@ -1,0 +1,26 @@
+project:
+  name: DS357 XAI Phase 2 - Bird vs Horse SpRAy
+  model: VGG-16-BN
+  label_map: D:/Projects/DS357-XAI-Replication/results/virelay/label_map.json
+
+  dataset:
+    name: PASCAL VOC 2007
+    type: hdf5
+    path: D:/Projects/DS357-XAI-Replication/results/virelay/dataset.h5
+    input_width: 224
+    input_height: 224
+    up_sampling_method: lanczos
+    down_sampling_method: lanczos
+    label_index_regex: null
+    label_word_net_id_regex: null
+
+  attributions:
+    attribution_method: LRP-EpsilonGammaBox
+    attribution_strategy: true_label
+    sources:
+      - D:/Projects/DS357-XAI-Replication/results/virelay/attribution.h5
+
+  analyses:
+    - analysis_method: Spectral
+      sources:
+        - D:/Projects/DS357-XAI-Replication/results/virelay/analysis.h5
