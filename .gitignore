@@ -27,3 +27,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+extension/models/*.pth
+extension/heatmaps/results/*.npy
+extension/spray/results/*.npy
+extension/data/chest_xray/
