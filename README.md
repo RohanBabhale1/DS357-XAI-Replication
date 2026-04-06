@@ -119,4 +119,4 @@ Main module for LRP computation:
 - **h5py** — HDF5 file handling
 - **matplotlib**, **pillow** — Visualization
 - **tqdm** — Progress bars
-- **jupyter**, **pandas** — Data analysis (optional)
+- **jupyter**, **pandas** — Data analysis 
