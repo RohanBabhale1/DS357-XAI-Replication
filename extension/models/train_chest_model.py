@@ -130,13 +130,13 @@ def train():
               f"val_f1={val_f1:.3f}  "
               f"val_auc={val_auc:.3f}  ")
 
-        if val_auc > best_val_auc and val_acc <= 0.90:
+        if val_auc > best_val_auc:
             best_val_auc = val_auc
             torch.save(model.state_dict(), MODEL_OUT)
-            print(f"  → Saved best model (val_acc={val_acc:.3f})")
+            print(f"  → Saved best model (val_auc={val_auc:.3f})")
         
 
-    print(f"\n✓ Training complete. Best val accuracy: {best_val_auc:.3f}")
+    print(f"\n✓ Training complete. Best auc: {best_val_auc:.3f}")
     print(f"✓ Model saved to: {MODEL_OUT}")
 
 
