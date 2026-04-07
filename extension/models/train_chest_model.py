@@ -54,6 +54,8 @@ class ChestDataset(Dataset):
 
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(10),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406],
                          std=[0.229, 0.224, 0.225]),
@@ -84,10 +86,11 @@ def train():
     model     = build_model().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.1)
     for param in model.features.parameters():
         param.requires_grad = False
     
-    best_val_acc = 0.0
+    best_val_auc = 0.0
     for epoch in range(EPOCHS):
         model.train()
         train_loss = 0.0
@@ -101,25 +104,39 @@ def train():
 
         model.eval()
         correct = 0
+        all_labels = []
+        all_preds = []
+        all_probs = []
         with torch.no_grad():
             for imgs, labels in val_loader:
                 imgs, labels = imgs.to(device), labels.to(device)
-                correct += (model(imgs).argmax(dim=1) == labels).sum().item()
+                outputs = model(imgs)
+                probs = torch.softmax(outputs, dim=1)[:, 1]
+                preds = outputs.argmax(dim=1)
+                
+                correct += (preds == labels).sum().item()
+                
+                all_labels.extend(labels.cpu().numpy())
+                all_preds.extend(preds.cpu().numpy())
+                all_probs.extend(probs.cpu().numpy())
+                
+        scheduler.step()
         val_acc = correct / len(val_ds)
-        val_f1 = f1_score(labels, model(imgs).argmax(dim=1))
-        val_auc = roc_auc_score(labels, model(imgs)[:, 1])
+        val_f1 = f1_score(all_labels, all_preds)
+        val_auc = roc_auc_score(all_labels, all_probs)
         print(f"Epoch {epoch+1}/{EPOCHS}  "
               f"loss={train_loss/len(train_loader):.4f}  "
               f"val_acc={val_acc:.3f}  "
               f"val_f1={val_f1:.3f}  "
               f"val_auc={val_auc:.3f}  ")
 
-        if val_acc > best_val_acc :
-            best_val_acc = val_acc
+        if val_auc > best_val_auc and val_acc <= 0.90:
+            best_val_auc = val_auc
             torch.save(model.state_dict(), MODEL_OUT)
             print(f"  → Saved best model (val_acc={val_acc:.3f})")
+        
 
-    print(f"\n✓ Training complete. Best val accuracy: {best_val_acc:.3f}")
+    print(f"\n✓ Training complete. Best val accuracy: {best_val_auc:.3f}")
     print(f"✓ Model saved to: {MODEL_OUT}")
 
 
