@@ -30,7 +30,7 @@ def main():
     print("Loading PneumoniaMNIST (train split, 224x224)...")
 
     # IMPORTANT: download=False since file is manually placed
-    dataset = PneumoniaMNIST(split='train', download=False, size=224)
+    dataset = PneumoniaMNIST(split='train', download=True, size=28)
 
     rng = np.random.default_rng(SEED)
     indices = rng.permutation(len(dataset))
