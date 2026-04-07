@@ -1,136 +1,128 @@
-import torch
-import torch.nn.functional as F
-import numpy as np
-import cv2
+"""
+extension/heatmaps/compute_medical_heatmaps.py
+
+Generates LRP heatmaps for 200 chest X-ray images using:
+  - EpsilonGammaBox composite (paper Listing 1, identical to Phase 2)
+  - VGG-16-BN fine-tuned on chest X-ray data (from Member B)
+
+Output: extension/heatmaps/results/
+          heatmaps_medical.npy   shape (200, 3, 224, 224)
+          labels_medical.npy     shape (200,)   ground truth: 0=normal 1=pneumonia
+          preds_medical.npy      shape (200,)   model predictions
+
+Usage: python extension/heatmaps/compute_medical_heatmaps.py
+"""
+
 import os
+import sys
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import models, transforms
 from PIL import Image
-import matplotlib.pyplot as plt
+from tqdm import tqdm
 
-# -------------------------------
-# CONFIG
-# -------------------------------
+# ── Monkey-patch: PyTorch 2.x rejects eps=0.0 that Zennit canonizer sets ──────
+_orig_bn = F.batch_norm
+def _patched_bn(input, running_mean, running_var, weight=None, bias=None,
+                training=False, momentum=0.1, eps=1e-5):
+    if eps == 0.0:
+        eps = 1e-5
+    return _orig_bn(input, running_mean, running_var, weight, bias,
+                    training, momentum, eps)
+F.batch_norm = _patched_bn
+
+from zennit.composites import EpsilonGammaBox
+from zennit.attribution import Gradient
+from zennit.canonizers import SequentialMergeBatchNorm
+
+# ── Config ─────────────────────────────────────────────────────────────────────
+DATA_DIR   = "extension/data/chest_xray"
 MODEL_PATH = "extension/models/vgg16_chest.pth"
-IMG_PATH   = "extension/data/chest_xray/pneumonia/pneumonia_000.png"
+SAVE_DIR   = "extension/heatmaps/results"
+SEED = 42
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD  = [0.229, 0.224, 0.225]
 
-# -------------------------------
-# SAME TRANSFORM AS TRAINING
-# -------------------------------
+# EpsilonGammaBox low/high: pixel-space bounds after normalization
+# Computed from (0 - mean)/std and (1 - mean)/std — same logic as paper's -3/+3
+low  = torch.FloatTensor([(0 - m) / s for m, s in zip(IMAGENET_MEAN, IMAGENET_STD)])
+high = torch.FloatTensor([(1 - m) / s for m, s in zip(IMAGENET_MEAN, IMAGENET_STD)])
+low  = low[None, :, None, None].expand(1, 3, 224, 224)
+high = high[None, :, None, None].expand(1, 3, 224, 224)
+
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                         std=[0.229, 0.224, 0.225]),
+    transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
 ])
 
-# -------------------------------
-# LOAD MODEL
-# -------------------------------
+
 def load_model():
     model = models.vgg16_bn(weights=None)
-    model.classifier[6] = torch.nn.Linear(4096, 2)
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-    model.to(DEVICE)
+    model.classifier[6] = nn.Linear(4096, 2)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
     model.eval()
     return model
 
-# -------------------------------
-# GRAD-CAM CLASS
-# -------------------------------
-class GradCAM:
-    def __init__(self, model):
-        self.model = model
-        self.gradients = None
-        self.activations = None
 
-        target_layer = self.model.features[-1]
+def get_image_paths():
+    paths, labels = [], []
+    for label, cls in enumerate(["normal", "pneumonia"]):
+        folder = os.path.join(DATA_DIR, cls)
+        for fname in sorted(os.listdir(folder)):
+            if fname.endswith(".png"):
+                paths.append(os.path.join(folder, fname))
+                labels.append(label)
+    return paths, labels
 
-        target_layer.register_forward_hook(self.save_activation)
-        target_layer.register_backward_hook(self.save_gradient)
 
-    def save_activation(self, module, input, output):
-        self.activations = output
-
-    def save_gradient(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0]
-
-    def generate(self, x):
-        output = self.model(x)
-        class_idx = torch.argmax(output)
-
-        self.model.zero_grad()
-        output[0, class_idx].backward()
-
-        gradients = self.gradients[0].cpu().numpy()
-        activations = self.activations[0].cpu().numpy()
-
-        weights = np.mean(gradients, axis=(1, 2))
-        cam = np.zeros(activations.shape[1:], dtype=np.float32)
-
-        for i, w in enumerate(weights):
-            cam += w * activations[i]
-
-        cam = np.maximum(cam, 0)
-        cam = cv2.resize(cam, (224, 224))
-
-        cam -= np.min(cam)
-        cam /= np.max(cam)
-
-        return cam, class_idx.item()
-
-# -------------------------------
-# UNNORMALIZE IMAGE
-# -------------------------------
-def unnormalize(img_tensor):
-    mean = np.array([0.485, 0.456, 0.406])
-    std  = np.array([0.229, 0.224, 0.225])
-
-    img = img_tensor.cpu().numpy().transpose(1, 2, 0)
-    img = std * img + mean
-    img = np.clip(img, 0, 1)
-
-    return (img * 255).astype(np.uint8)
-
-# -------------------------------
-# APPLY HEATMAP
-# -------------------------------
-def apply_heatmap(img, cam):
-    heatmap = cv2.applyColorMap(np.uint8(255 * cam), cv2.COLORMAP_JET)
-    overlay = heatmap * 0.4 + img
-    return overlay.astype(np.uint8)
-
-# -------------------------------
-# MAIN
-# -------------------------------
 def main():
+    os.makedirs(SAVE_DIR, exist_ok=True)
+    torch.manual_seed(SEED)
+
     model = load_model()
+    paths, labels = get_image_paths()
+    print(f"Processing {len(paths)} images with EpsilonGammaBox LRP...")
 
-    img = Image.open(IMG_PATH).convert("RGB")
-    input_tensor = transform(img).unsqueeze(0).to(DEVICE)
+    canonizers = [SequentialMergeBatchNorm()]
+    composite  = EpsilonGammaBox(low=low, high=high, canonizers=canonizers)
 
-    gradcam = GradCAM(model)
-    cam, pred = gradcam.generate(input_tensor)
+    heatmaps    = []
+    class_preds = []
 
-    original = unnormalize(input_tensor[0])
-    result = apply_heatmap(original, cam)
+    with Gradient(model=model, composite=composite) as attributor:
+        for path, label in tqdm(zip(paths, labels), total=len(paths)):
+            img = Image.open(path).convert("RGB")
+            x   = transform(img).unsqueeze(0)
+            x.requires_grad_(True)
 
-    label_map = {0: "Normal", 1: "Pneumonia"}
+            out        = model(x)
+            pred_class = out.argmax(dim=1).item()
+            class_preds.append(pred_class)
 
-    plt.figure(figsize=(10, 4))
+            # One-hot target on predicted class (matches paper Listing 1)
+            target = torch.zeros_like(out)
+            target[0, pred_class] = 1.0
 
-    plt.subplot(1, 2, 1)
-    plt.title("Original")
-    plt.imshow(original)
-    plt.axis('off')
+            _, relevance = attributor(x, target)
+            heatmaps.append(relevance.detach().cpu().numpy()[0])  # (3, 224, 224)
 
-    plt.subplot(1, 2, 2)
-    plt.title(f"Grad-CAM ({label_map[pred]})")
-    plt.imshow(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-    plt.axis('off')
+    heatmaps_arr = np.array(heatmaps)   # (200, 3, 224, 224)
+    labels_arr   = np.array(labels)
+    preds_arr    = np.array(class_preds)
 
-    plt.show()
+    np.save(os.path.join(SAVE_DIR, "heatmaps_medical.npy"), heatmaps_arr)
+    np.save(os.path.join(SAVE_DIR, "labels_medical.npy"),   labels_arr)
+    np.save(os.path.join(SAVE_DIR, "preds_medical.npy"),    preds_arr)
+
+    accuracy = (labels_arr == preds_arr).mean()
+    print(f"\n✓ heatmaps_medical.npy shape: {heatmaps_arr.shape}")
+    print(f"✓ Model accuracy on 200 images: {accuracy:.3f}")
+    print(f"✓ Saved to: {SAVE_DIR}/")
+    
 
 
 if __name__ == "__main__":

@@ -22,27 +22,27 @@ patterns reflect clinical evidence or possible shortcut behavior.
 |--------|-------|---------|
 | Samples | 200 | Number of evaluated images |
 | Clusters | 4 | Number of K-Means groups |
-| Adjusted Rand Index (ARI) | 0.2242 | Agreement between clusters and diagnosis labels |
-| Normalised Mutual Information (NMI) | 0.2281 | Shared information between clustering and labels |
-| Clustering Purity | 0.7750 | Fraction assigned to a majority-class cluster |
+| Adjusted Rand Index (ARI) | 0.1532 | Agreement between clusters and diagnosis labels |
+| Normalised Mutual Information (NMI) | 0.2044 | Shared information between clustering and labels |
+| Clustering Purity | 0.7350 | Fraction assigned to a majority-class cluster |
 
 ## Cluster Composition
 
 | Cluster | Normal | Pneumonia | Total | Dominant Class |
 |---------|--------|-----------|-------|----------------|
-| C0 | 36 | 3 | 39 | Normal |
-| C1 | 22 | 22 | 44 | Normal |
-| C2 | 7 | 62 | 69 | Pneumonia |
-| C3 | 35 | 13 | 48 | Normal |
+| C0 | 31 | 5 | 36 | Normal |
+| C1 | 38 | 21 | 59 | Normal |
+| C2 | 30 | 26 | 56 | Normal |
+| C3 | 1 | 48 | 49 | Pneumonia |
 
 ## Results
 
 The comparison shows partial alignment between SpRAy clusters and the medical
-labels. ARI = 0.2242 and NMI = 0.2281 indicate that the explanation
+labels. ARI = 0.1532 and NMI = 0.2044 indicate that the explanation
 clusters capture some disease-related structure, but not enough to conclude that
 the model relies only on pathology-specific evidence.
 
-Purity = 0.7750 shows that most samples fall into majority-class clusters,
+Purity = 0.7350 shows that most samples fall into majority-class clusters,
 yet several clusters still contain a mixture of Normal and Pneumonia cases. That
 mixed structure is important because it suggests some attribution maps are shaped
 by shared visual properties such as brightness, borders, or scanner artifacts.
@@ -50,23 +50,23 @@ by shared visual properties such as brightness, borders, or scanner artifacts.
 ## Cluster-Level Interpretation
 
 ### Cluster 0
-- Composition: 36 Normal, 3 Pneumonia
+- Composition: 31 Normal, 5 Pneumonia
 - Dominant class: Normal
 - Interpretation: Dominated by Normal samples. The explanation pattern likely captures clear lung fields and low-opacity regions.
 
 ### Cluster 1
-- Composition: 22 Normal, 22 Pneumonia
+- Composition: 38 Normal, 21 Pneumonia
 - Dominant class: Normal
 - Interpretation: Balanced between Normal and Pneumonia. This is the strongest sign of ambiguous or non-diagnostic explanation behavior.
 
 ### Cluster 2
-- Composition: 7 Normal, 62 Pneumonia
-- Dominant class: Pneumonia
+- Composition: 30 Normal, 26 Pneumonia
+- Dominant class: Normal
 - Interpretation: Strongly Pneumonia-dominated. This is the most clinically plausible cluster because it likely reflects consolidation-related evidence.
 
 ### Cluster 3
-- Composition: 35 Normal, 13 Pneumonia
-- Dominant class: Normal
+- Composition: 1 Normal, 48 Pneumonia
+- Dominant class: Pneumonia
 - Interpretation: Mostly Normal, but still mixed. The model may be using border, contrast, or structural cues in addition to pathology.
 
 ## Bias Discussion
