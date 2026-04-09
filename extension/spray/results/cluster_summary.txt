@@ -1,0 +1,7 @@
+SpRAy Cluster Summary
+=====================
+
+Cluster 0: 36 images (31 Normal, 5 Pneumonia)
+Cluster 1: 59 images (38 Normal, 21 Pneumonia)
+Cluster 2: 56 images (30 Normal, 26 Pneumonia)
+Cluster 3: 49 images (1 Normal, 48 Pneumonia)
