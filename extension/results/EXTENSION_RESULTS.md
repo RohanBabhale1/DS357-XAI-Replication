@@ -1,9 +1,4 @@
 # Extension Results: SpRAy Clustering & Bias Detection on Medical Imaging
-
-**Task:** Member D — Apply SpRAy (Spectral Relevance Analysis) to a medical imaging domain (chest X-ray pneumonia detection) and detect potential model biases.
-
----
-
 ## 1. Setup
 
 | Item | Detail |
