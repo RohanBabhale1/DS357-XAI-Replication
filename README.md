@@ -18,6 +18,12 @@ DS357-XAI-Replication/
 ├── data/
 │   └── imagenet_samples/              # Sample ImageNet images (lighthouse class)
 │
+├── docs/
+│   ├── AI_USAGE.md
+│   ├── REPLICATION_SUMMARY.pdf
+│   ├── Research_Gap.md
+│   └── XAI_Extension_Report.pdf   
+│
 ├── results/
 │   ├── heatmaps/                      # Generated attribution heatmaps
 │   └── spray/                         # SpRAy clustering results
