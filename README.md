@@ -26,9 +26,40 @@ DS357-XAI-Replication/
 │       ├── spray.h5                   # HDF5 cache (CoRelAy format)
 │       └── tsne_embedding.npy         # t-SNE embedding (shape [N, 2])
 │
+├── extension/                               ← All Phase 3 code lives here
+│   ├── data/
+│   │   ├── download_chest_data.py           
+│   │   └── chest_xray/                      ← (gitignored)
+│   │       ├── normal/                      ← 100 PNG images
+│   │       └── pneumonia/                   ← 100 PNG images
+│   ├── models/
+│   │   ├── train_chest_model.py             
+│   │   └── vgg16_chest.pth                  ← saved weights (gitignored)
+│   ├── heatmaps/
+│   │   ├── compute_medical_heatmaps.py     
+│   │   └── results/
+│   │       ├── heatmaps_medical.npy         ← (200, 3, 224, 224), gitignored
+│   │       ├── labels_medical.npy
+│   │       └── preds_medical.npy
+│   ├── spray/
+│   │   ├── run_medical_spray.py             
+│   │   └── results/
+│   │       ├── tsne_medical.npy
+│   │       ├── cluster_labels.npy
+│   │       ├── cluster_summary.txt
+│   │       ├── fig_spray_clusters.png
+│   │       └── fig_cluster_heatmaps.png
+│   └── comparison/
+│       ├── compare_results.py               
+│       └── figures/
+│           └── fig_comparison.png                       
+├── extension/results/
+│   └── EXTENSION_RESULTS.md                
 ├── xai_methods/
 │   ├── __init__.py
-│   └── lrp_zennit.py                  # Core LRP implementation using Zennit
+│   ├── corely_method.py
+│   ├── virely_method.py
+│   └── lrp_zennit.py                
 │
 └── spray_analysis/
     ├── generate_heatmaps.py           # Generate heatmaps for multiple images & methods
